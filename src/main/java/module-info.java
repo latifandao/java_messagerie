@@ -6,4 +6,5 @@ module banawa.isi.java_messagerie {
 
     opens banawa.isi.java_messagerie to javafx.fxml;
     exports banawa.isi.java_messagerie;
+
 }
