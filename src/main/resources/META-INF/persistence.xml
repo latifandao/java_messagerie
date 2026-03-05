@@ -7,8 +7,8 @@
 
     <persistence-unit name="messagingPU" transaction-type="RESOURCE_LOCAL">
 
-        <class>com.isil3gl.messageriejava.model.User</class>
-        <class>com.isil3gl.messageriejava.model.Message</class>
+        <class>banawa.isi.java_messagerie.model.User</class>
+        <class>banawa.isi.java_messagerie.model.Message</class>
 
         <properties>
             <property name="jakarta.persistence.jdbc.driver"
