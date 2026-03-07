@@ -106,7 +106,7 @@
         <HBox spacing="10"
               style="-fx-background-color: #f0f0f0; -fx-padding: 10 12 10 12;"
               alignment="CENTER">
-            <TextField fx:id="inputTextField"
+            <TextField fx:id="inputMessageField"
                        promptText="Tape un message..."
                        HBox.hgrow="ALWAYS"
                        onAction="#handleSend"

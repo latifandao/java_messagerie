@@ -9,6 +9,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import javafx.scene.input.KeyCode;
 
 public class LoginController {
 
@@ -33,6 +34,11 @@ public class LoginController {
                 return;
             }
         }
+        passwordField.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.ENTER) {
+                handleLogin(); // your login button action method
+            }
+        });
 
         connection.setOnMessageReceived(msg ->
                 Platform.runLater(() -> handleServerMessage(msg)));
