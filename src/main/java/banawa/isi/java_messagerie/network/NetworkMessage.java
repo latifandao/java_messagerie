@@ -1,104 +1,146 @@
 package banawa.isi.java_messagerie.network;
 
-
-import java.io.Serial;
 import java.io.Serializable;
+import java.time.LocalDateTime;
 
+/**
+ * Classe unique de message réseau — utilisée par client ET serveur.
+ * NE PAS dupliquer dans d'autres packages.
+ */
 public class NetworkMessage implements Serializable {
 
-    // Serial version — important for socket serialization stability
-    @Serial
     private static final long serialVersionUID = 1L;
 
-    // Every possible message type between client and server
+    // ── UserStatusDTO intégré ──────────────────────────────────────
+
+    /**
+     * DTO pour envoyer un contact avec son statut online/offline.
+     * Intégré ici pour éviter tout problème d'import entre client et serveur.
+     */
+    public static class UserStatusDTO implements Serializable {
+        private static final long serialVersionUID = 2L;
+
+        private String  username;
+        private boolean online;
+
+        public UserStatusDTO() {}
+
+        public UserStatusDTO(String username, boolean online) {
+            this.username = username;
+            this.online   = online;
+        }
+
+        public String  getUsername() { return username; }
+        public boolean isOnline()    { return online; }
+
+        @Override
+        public String toString() {
+            return username + " [" + (online ? "ONLINE" : "OFFLINE") + "]";
+        }
+    }
+
+    // ── Type ──────────────────────────────────────────────────────
+
     public enum Type {
-        // Auth
-        REGISTER,
-        REGISTER_SUCCESS,
-        REGISTER_FAIL,
-
-        LOGIN,
-        LOGIN_SUCCESS,
-        LOGIN_FAIL,
-
-        LOGOUT,
-
-        // Messaging
-        SEND_MESSAGE,
-        RECEIVE_MESSAGE,
-
-        // History & users
-        GET_HISTORY,
-        HISTORY_RESPONSE,
-
-        GET_ONLINE_USERS,
-        ONLINE_USERS_RESPONSE,
-
-        // Status updates pushed by server to all clients
-        USER_CONNECTED,
-        USER_DISCONNECTED,
-
-        // Errors
+        LOGIN, REGISTER, LOGOUT,
+        LOGIN_SUCCESS, LOGIN_FAIL,
+        REGISTER_SUCCESS, REGISTER_FAIL,
+        SEND_MESSAGE, RECEIVE_MESSAGE,
+        GET_ONLINE_USERS, ONLINE_USERS_RESPONSE,
+        USER_STATUS_CHANGE,
+        GET_HISTORY, HISTORY_RESPONSE,
         ERROR
     }
 
-    private Type type;        // what kind of message this is
-    private String sender;    // username of sender
-    private String receiver;  // username of receiver
-    private String content;   // message text, error text, or any string payload
-    private Object data;      // flexible payload — List<Message>, List<String>, etc.
+    // ── Champs ────────────────────────────────────────────────────
 
-    // --- Constructors ---
+    private Type          type;
+    private String        sender;
+    private String        receiver;
+    private String        content;
+    private LocalDateTime timestamp;
+    private Object        data;
+    private boolean       online;
+
+    // ── Constructeurs ─────────────────────────────────────────────
 
     public NetworkMessage() {}
 
-    // Simple type-only message (e.g. LOGOUT, GET_ONLINE_USERS)
     public NetworkMessage(Type type) {
-        this.type = type;
+        this.type      = type;
+        this.timestamp = LocalDateTime.now();
     }
 
-    // Type + single string payload (e.g. ERROR with a description)
-    public NetworkMessage(Type type, String content) {
-        this.type = type;
-        this.content = content;
+    public NetworkMessage(Type type, String sender, String content) {
+        this.type      = type;
+        this.sender    = sender;
+        this.content   = content;
+        this.timestamp = LocalDateTime.now();
     }
 
-    // Full message (e.g. SEND_MESSAGE)
     public NetworkMessage(Type type, String sender, String receiver, String content) {
-        this.type = type;
-        this.sender = sender;
-        this.receiver = receiver;
-        this.content = content;
+        this.type      = type;
+        this.sender    = sender;
+        this.receiver  = receiver;
+        this.content   = content;
+        this.timestamp = LocalDateTime.now();
     }
 
-    // Type + data payload (e.g. HISTORY_RESPONSE with a List<Message>)
     public NetworkMessage(Type type, Object data) {
-        this.type = type;
-        this.data = data;
+        this.type      = type;
+        this.data      = data;
+        this.timestamp = LocalDateTime.now();
     }
 
-    // --- Getters & Setters ---
+    // ── Méthodes statiques ────────────────────────────────────────
 
-    public Type getType() { return type; }
-    public void setType(Type type) { this.type = type; }
+    public static NetworkMessage statusChange(String username, boolean online) {
+        NetworkMessage msg = new NetworkMessage();
+        msg.type      = Type.USER_STATUS_CHANGE;
+        msg.sender    = username;
+        msg.online    = online;
+        msg.timestamp = LocalDateTime.now();
+        return msg;
+    }
 
-    public String getSender() { return sender; }
-    public void setSender(String sender) { this.sender = sender; }
+    public static NetworkMessage loginSuccess(String username) {
+        NetworkMessage msg = new NetworkMessage();
+        msg.type      = Type.LOGIN_SUCCESS;
+        msg.sender    = username;
+        msg.timestamp = LocalDateTime.now();
+        return msg;
+    }
 
-    public String getReceiver() { return receiver; }
-    public void setReceiver(String receiver) { this.receiver = receiver; }
+    public static NetworkMessage fail(Type type, String reason) {
+        NetworkMessage msg = new NetworkMessage();
+        msg.type      = type;
+        msg.content   = reason;
+        msg.timestamp = LocalDateTime.now();
+        return msg;
+    }
 
-    public String getContent() { return content; }
-    public void setContent(String content) { this.content = content; }
+    // ── Getters / Setters ─────────────────────────────────────────
 
-    public Object getData() { return data; }
-    public void setData(Object data) { this.data = data; }
+    public Type getType() {
+        return type;
+    }
+    public void          setType(Type type)                { this.type = type; }
+    public String        getSender()                       { return sender; }
+    public void          setSender(String sender)          { this.sender = sender; }
+    public String        getReceiver()                     { return receiver; }
+    public void          setReceiver(String receiver)      { this.receiver = receiver; }
+    public String        getContent()                      { return content; }
+    public void          setContent(String content)        { this.content = content; }
+    public LocalDateTime getTimestamp()                    { return timestamp; }
+    public void          setTimestamp(LocalDateTime ts)    { this.timestamp = ts; }
+    public Object        getData()                         { return data; }
+    public void          setData(Object data)              { this.data = data; }
+    public boolean       isOnline()                        { return online; }
+    public void          setOnline(boolean online)         { this.online = online; }
 
     @Override
     public String toString() {
-        return "NetworkMessage{type=" + type +
-                ", sender='" + sender + "'" +
-                ", receiver='" + receiver + "'" +
-                ", content='" + content + "'}";
+        return "NetworkMessage{type=" + type + ", sender=" + sender
+                + ", receiver=" + receiver + ", content=" + content + "}";
     }
 }

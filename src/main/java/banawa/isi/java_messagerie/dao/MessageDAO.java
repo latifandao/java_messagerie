@@ -8,102 +8,73 @@ import java.util.List;
 
 public class MessageDAO {
 
-    // --- Create ---
-
     public void save(Message message) {
-        EntityManager em = HibernateUtil.getEntityManager();
-        try {
+        try (EntityManager em = HibernateUtil.getEntityManager()) {
             em.getTransaction().begin();
             em.persist(message);
             em.getTransaction().commit();
-        } catch (Exception e) {
-            em.getTransaction().rollback();
-            throw new RuntimeException("Error saving message", e);
-        } finally {
-            em.close();
         }
     }
 
-    // --- Read ---
+    public void update(Message message) {
+        try (EntityManager em = HibernateUtil.getEntityManager()) {
+            em.getTransaction().begin();
+            em.merge(message);
+            em.getTransaction().commit();
+        }
+    }
 
-    // Get full conversation between two users, ordered by date (RG8)
-    public List<Message> getConversation(String user1, String user2) {
-        EntityManager em = HibernateUtil.getEntityManager();
-        try {
-            return em.createQuery("""
-                    SELECT m FROM Message m
-                    WHERE (m.sender.username = :user1 AND m.receiver.username = :user2)
-                       OR (m.sender.username = :user2 AND m.receiver.username = :user1)
-                    ORDER BY m.dateEnvoi ASC
-                    """, Message.class)
-                    .setParameter("user1", user1)
-                    .setParameter("user2", user2)
+    /**
+     * Messages non encore livrés (ENVOYE) pour un destinataire donné.
+     * Utilisé pour livrer les messages hors-ligne à la reconnexion.
+     */
+    public List<Message> getUndeliveredMessages(String receiverUsername) {
+        try (EntityManager em = HibernateUtil.getEntityManager()) {
+            return em.createQuery(
+                            "SELECT m FROM Message m " +
+                                    "WHERE m.receiver.username = :username " +
+                                    "AND m.statut = 'ENVOYE' " +
+                                    "ORDER BY m.dateEnvoi ASC", Message.class)
+                    .setParameter("username", receiverUsername)
                     .getResultList();
-        } finally {
-            em.close();
         }
     }
 
-    // Get messages that were sent to a user while they were offline (RG6)
-    public List<Message> getPendingMessages(String username) {
-        EntityManager em = HibernateUtil.getEntityManager();
-        try {
-            return em.createQuery("""
-                    SELECT m FROM Message m
-                    WHERE m.receiver.username = :username
-                    AND m.statut = :statut
-                    ORDER BY m.dateEnvoi ASC
-                    """, Message.class)
-                    .setParameter("username", username)
-                    .setParameter("statut", Message.MessageStatus.ENVOYE)
+    /**
+     * Historique complet entre 2 utilisateurs (ordre chronologique — RG8).
+     */
+    public List<Message> getHistory(String userA, String userB) {
+        try (EntityManager em = HibernateUtil.getEntityManager()) {
+            return em.createQuery(
+                            "SELECT m FROM Message m " +
+                                    "WHERE (m.sender.username = :a AND m.receiver.username = :b) " +
+                                    "   OR (m.sender.username = :b AND m.receiver.username = :a) " +
+                                    "ORDER BY m.dateEnvoi ASC", Message.class)
+                    .setParameter("a", userA)
+                    .setParameter("b", userB)
                     .getResultList();
-        } finally {
-            em.close();
         }
     }
 
-    // --- Update ---
-
-    public void updateStatus(Long messageId, Message.MessageStatus status) {
-        EntityManager em = HibernateUtil.getEntityManager();
-        try {
+    public void markAsDelivered(Message message) {
+        try (EntityManager em = HibernateUtil.getEntityManager()) {
             em.getTransaction().begin();
             em.createQuery(
-                            "UPDATE Message m SET m.statut = :statut WHERE m.id = :id")
-                    .setParameter("statut", status)
+                            "UPDATE Message m SET m.statut = 'RECU' WHERE m.id = :id")
+                    .setParameter("id", message.getId())
+                    .executeUpdate();
+            em.getTransaction().commit();
+        }
+    }
+
+    public void markAsRead(Long messageId) {
+        try (EntityManager em = HibernateUtil.getEntityManager()) {
+            em.getTransaction().begin();
+            em.createQuery(
+                            "UPDATE Message m SET m.statut = 'LU' WHERE m.id = :id")
                     .setParameter("id", messageId)
                     .executeUpdate();
             em.getTransaction().commit();
-        } catch (Exception e) {
-            em.getTransaction().rollback();
-            throw new RuntimeException("Error updating message status", e);
-        } finally {
-            em.close();
-        }
-    }
-
-    // Mark all messages in a conversation as read
-    public void markConversationAsRead(String senderUsername, String receiverUsername) {
-        EntityManager em = HibernateUtil.getEntityManager();
-        try {
-            em.getTransaction().begin();
-            em.createQuery("""
-                    UPDATE Message m SET m.statut = :statut
-                    WHERE m.sender.username = :sender
-                    AND m.receiver.username = :receiver
-                    AND m.statut != :alreadyRead
-                    """)
-                    .setParameter("statut", Message.MessageStatus.LU)
-                    .setParameter("sender", senderUsername)
-                    .setParameter("receiver", receiverUsername)
-                    .setParameter("alreadyRead", Message.MessageStatus.LU)
-                    .executeUpdate();
-            em.getTransaction().commit();
-        } catch (Exception e) {
-            em.getTransaction().rollback();
-            throw new RuntimeException("Error marking messages as read", e);
-        } finally {
-            em.close();
         }
     }
 }

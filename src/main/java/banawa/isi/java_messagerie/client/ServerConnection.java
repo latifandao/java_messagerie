@@ -1,7 +1,6 @@
 package banawa.isi.java_messagerie.client;
 
-
-import banawa.isi.java_messagerie.dao.NetworkMessage;
+import banawa.isi.java_messagerie.network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -9,133 +8,109 @@ import java.io.*;
 import java.net.Socket;
 import java.util.function.Consumer;
 
+/**
+ * Connexion Singleton au serveur.
+ * Tous les controllers utilisent getInstance() — ne jamais créer manuellement.
+ */
 public class ServerConnection {
 
     private static final Logger logger = LoggerFactory.getLogger(ServerConnection.class);
 
     private static final String HOST = "localhost";
-    private static final int PORT = 5000;
+    private static final int    PORT = 5000;
 
-    private Socket socket;
+    private Socket             socket;
     private ObjectOutputStream out;
-    private ObjectInputStream in;
+    private ObjectInputStream  in;
+    private boolean            running = false;
 
-    private Thread listenerThread;
-    private boolean running = false;
-
-    // Callback — whoever creates this connection provides a handler
-    // for incoming messages (e.g. ChatController)
     private Consumer<NetworkMessage> onMessageReceived;
+    private Runnable                 onConnectionLost;
 
-    // Callback for when connection is lost (RG10)
-    private Runnable onConnectionLost;
-
-    // --- Singleton so every controller shares the same connection ---
+    // ── Singleton ─────────────────────────────────────────────────
 
     private static ServerConnection instance;
 
     public static ServerConnection getInstance() {
-        if (instance == null) {
-            instance = new ServerConnection();
-        }
+        if (instance == null) instance = new ServerConnection();
         return instance;
     }
 
     private ServerConnection() {}
 
-    // --- Connect ---
+    // ── Connexion ─────────────────────────────────────────────────
 
+    /**
+     * Ouvre la connexion TCP vers le serveur.
+     * @return true si succès, false sinon (RG10)
+     */
     public boolean connect() {
+        if (isConnected()) return true;   // déjà connecté
         try {
-            socket = new Socket(HOST, PORT);
-
-            // Output before input — always
-            out = new ObjectOutputStream(socket.getOutputStream());
-            in  = new ObjectInputStream(socket.getInputStream());
-
+            socket  = new Socket(HOST, PORT);
+            out     = new ObjectOutputStream(socket.getOutputStream());
+            in      = new ObjectInputStream(socket.getInputStream());
             running = true;
             startListenerThread();
-
-            logger.info("Connected to server at {}:{}", HOST, PORT);
+            logger.info("Connected to server {}:{}", HOST, PORT);
             return true;
-
         } catch (IOException e) {
-            logger.error("Could not connect to server: {}", e.getMessage());
+            logger.error("Cannot connect to server: {}", e.getMessage());
             return false;
         }
     }
 
-    // --- Background listener thread ---
-    // Constantly reads incoming NetworkMessages and fires the callback
-
     private void startListenerThread() {
-        listenerThread = new Thread(() -> {
+        Thread t = new Thread(() -> {
             try {
                 while (running) {
-                    NetworkMessage message = (NetworkMessage) in.readObject();
-                    if (message != null && onMessageReceived != null) {
-                        onMessageReceived.accept(message);
-                    }
+                    NetworkMessage msg = (NetworkMessage) in.readObject();
+                    if (msg != null && onMessageReceived != null)
+                        onMessageReceived.accept(msg);
                 }
-            } catch (IOException e) {
-                if (running) {
-                    // RG10 — connection lost unexpectedly
-                    logger.warn("Connection to server lost: {}", e.getMessage());
-                    running = false;
-                    if (onConnectionLost != null) {
-                        onConnectionLost.run();
-                    }
-                }
-            } catch (ClassNotFoundException e) {
-                logger.error("Unknown message type received: {}", e.getMessage());
+            } catch (IOException | ClassNotFoundException e) {
+                running = false;
+                logger.warn("Connection lost: {}", e.getMessage());
+                if (onConnectionLost != null) onConnectionLost.run();
             }
         });
-
-        listenerThread.setDaemon(true);
-        listenerThread.start();
+        t.setDaemon(true);
+        t.setName("ServerListener");
+        t.start();
     }
 
-    // --- Send a message to the server ---
+    // ── Envoi ─────────────────────────────────────────────────────
 
-    public synchronized void send(NetworkMessage message) {
+    public synchronized void send(NetworkMessage msg) {
         try {
-            out.writeObject(message);
+            out.writeObject(msg);
             out.flush();
             out.reset();
         } catch (IOException e) {
-            logger.error("Failed to send message: {}", e.getMessage());
-            if (onConnectionLost != null) {
-                onConnectionLost.run();
-            }
+            logger.error("Send failed: {}", e.getMessage());
+            if (onConnectionLost != null) onConnectionLost.run();
         }
     }
 
-    // --- Disconnect ---
+    // ── Déconnexion ───────────────────────────────────────────────
 
     public void disconnect() {
         running = false;
         try {
-            if (in != null)     in.close();
-            if (out != null)    out.close();
+            if (out    != null) out.close();
+            if (in     != null) in.close();
             if (socket != null) socket.close();
-        } catch (IOException e) {
-            logger.error("Error disconnecting: {}", e.getMessage());
-        }
+        } catch (IOException ignored) {}
         instance = null;
         logger.info("Disconnected from server");
     }
 
-    // --- Callbacks ---
+    // ── Callbacks ─────────────────────────────────────────────────
 
-    public void setOnMessageReceived(Consumer<NetworkMessage> callback) {
-        this.onMessageReceived = callback;
-    }
+    public void setOnMessageReceived(Consumer<NetworkMessage> cb) { this.onMessageReceived = cb; }
+    public void setOnConnectionLost(Runnable cb)                  { this.onConnectionLost  = cb; }
 
-    public void setOnConnectionLost(Runnable callback) {
-        this.onConnectionLost = callback;
-    }
-
-    // --- State ---
+    // ── État ──────────────────────────────────────────────────────
 
     public boolean isConnected() {
         return socket != null && socket.isConnected() && !socket.isClosed();

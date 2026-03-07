@@ -1,295 +1,250 @@
 package banawa.isi.java_messagerie.server;
 
+import banawa.isi.java_messagerie.dao.MessageDAO;
+import banawa.isi.java_messagerie.dao.UserDAO;
+import banawa.isi.java_messagerie.model.Message;
+import banawa.isi.java_messagerie.model.User;
+import banawa.isi.java_messagerie.network.NetworkMessage;
 import at.favre.lib.crypto.bcrypt.BCrypt;
-import com.isil3gl.messageriejava.dao.MessageDAO;
-import com.isil3gl.messageriejava.dao.UserDAO;
-import com.isil3gl.messageriejava.model.Message;
-import com.isil3gl.messageriejava.model.User;
-import com.isil3gl.messageriejava.network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.Socket;
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class ClientHandler implements Runnable {
 
     private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
 
     private final Socket socket;
+    private final Server server;
+    private ObjectInputStream  in;
     private ObjectOutputStream out;
-    private ObjectInputStream in;
-    private String loggedInUsername = null;
 
-    private final UserDAO userDAO = new UserDAO();
+    private String username;
+
+    private final UserDAO    userDAO    = new UserDAO();
     private final MessageDAO messageDAO = new MessageDAO();
 
-    public ClientHandler(Socket socket) {
+    public ClientHandler(Socket socket, Server server) {
         this.socket = socket;
+        this.server = server;
     }
 
     @Override
     public void run() {
         try {
-            // Output stream must be created BEFORE input stream — always
             out = new ObjectOutputStream(socket.getOutputStream());
             in  = new ObjectInputStream(socket.getInputStream());
 
-            NetworkMessage message;
-            // Keep reading messages from this client until they disconnect
-            while ((message = (NetworkMessage) in.readObject()) != null) {
-                route(message);
+            while (true) {
+                NetworkMessage msg = (NetworkMessage) in.readObject();
+                if (msg == null) continue;
+
+                switch (msg.getType()) {
+                    case LOGIN            -> handleLogin(msg);
+                    case REGISTER         -> handleRegister(msg);
+                    case SEND_MESSAGE     -> handleMessage(msg);
+                    case GET_ONLINE_USERS -> handleGetOnlineUsers();
+                    case GET_HISTORY      -> handleGetHistory(msg);
+                    case LOGOUT           -> { handleLogout(); return; }
+                    default -> logger.warn("Unknown type: {}", msg.getType());
+                }
             }
 
-        } catch (IOException e) {
-            // EOFException is a subclass of IOException so it's caught here too
-            // EOFException specifically means the client cleanly disconnected
-            if (e instanceof EOFException) {
-                logger.info("Client disconnected cleanly: {}",
-                        loggedInUsername != null ? loggedInUsername : "unauthenticated");
-            } else {
-                // RG10 — any other IO error means connection was lost
-                logger.warn("Connection lost for {}: {}",
-                        loggedInUsername != null ? loggedInUsername : "unauthenticated",
-                        e.getMessage());
-            }
-            handleDisconnect();
-        } catch (ClassNotFoundException e) {
-            logger.error("Unknown message type received: {}", e.getMessage());
+        } catch (IOException | ClassNotFoundException e) {
+            logger.warn("Connection lost for {}: {}", username, e.getMessage());
         } finally {
-            handleDisconnect();
-            closeConnection();
+            cleanup();
         }
     }
 
-    // --- Router ---
-
-    private void route(NetworkMessage message) {
-        logger.info("Received {} from {}", message.getType(),
-                loggedInUsername != null ? loggedInUsername : "unauthenticated");
-        switch (message.getType()) {
-            case REGISTER        -> handleRegister(message);
-            case LOGIN           -> handleLogin(message);
-            case LOGOUT          -> handleLogout();
-            case SEND_MESSAGE    -> handleSendMessage(message);
-            case GET_HISTORY     -> handleGetHistory(message);
-            case GET_ONLINE_USERS -> handleGetOnlineUsers();
-            default -> sendMessage(new NetworkMessage(
-                    NetworkMessage.Type.ERROR, "Unknown message type"));
-        }
-    }
-
-    // --- Handlers ---
-
+    // RG1 username unique, RG9 mot de passe hache
     private void handleRegister(NetworkMessage msg) {
-        String username = msg.getSender();
-        String password = msg.getContent();
+        String user = msg.getSender();
+        String pass = msg.getContent();
 
-        // RG1 — username must be unique
-        if (userDAO.existsByUsername(username)) {
-            sendMessage(new NetworkMessage(
-                    NetworkMessage.Type.REGISTER_FAIL, "Username already taken"));
+        if (userDAO.usernameExists(user)) {
+            safeSend(NetworkMessage.fail(NetworkMessage.Type.REGISTER_FAIL,
+                    "Username already taken."));
             return;
         }
 
-        // RG9 — hash password before saving
-        String hashed = BCrypt.withDefaults().hashToString(12, password.toCharArray());
-
-        User user = new User(username, hashed);
-        userDAO.save(user);
-
-        logger.info("New user registered: {}", username);
-        sendMessage(new NetworkMessage(NetworkMessage.Type.REGISTER_SUCCESS));
+        String hashed = BCrypt.withDefaults().hashToString(12, pass.toCharArray());
+        userDAO.save(new User(user, hashed));
+        logger.info("[REGISTER] {}", user);
+        safeSend(new NetworkMessage(NetworkMessage.Type.REGISTER_SUCCESS,
+                "Account created. You can now log in."));
     }
 
+    // RG3 : une seule session, RG4 : statut ONLINE
     private void handleLogin(NetworkMessage msg) {
-        String username = msg.getSender();
-        String password = msg.getContent();
+        String user = msg.getSender();
+        String pass = msg.getContent();
 
-        // RG3 — only one session per user
-        if (SessionManager.isAlreadyConnected(username)) {
-            sendMessage(new NetworkMessage(
-                    NetworkMessage.Type.LOGIN_FAIL, "User already connected"));
+        User u = userDAO.findByUsername(user);
+
+        if (u == null) {
+            safeSend(NetworkMessage.fail(NetworkMessage.Type.LOGIN_FAIL,
+                    "Invalid username or password."));
             return;
         }
 
-        Optional<User> userOpt = userDAO.findByUsername(username);
-
-        // Check user exists
-        if (userOpt.isEmpty()) {
-            sendMessage(new NetworkMessage(
-                    NetworkMessage.Type.LOGIN_FAIL, "User not found"));
-            return;
-        }
-
-        // RG9 — verify hashed password
-        BCrypt.Result result = BCrypt.verifyer()
-                .verify(password.toCharArray(), userOpt.get().getPassword());
-
+        BCrypt.Result result = BCrypt.verifyer().verify(pass.toCharArray(), u.getPassword());
         if (!result.verified) {
-            sendMessage(new NetworkMessage(
-                    NetworkMessage.Type.LOGIN_FAIL, "Incorrect password"));
+            safeSend(NetworkMessage.fail(NetworkMessage.Type.LOGIN_FAIL,
+                    "Invalid username or password."));
             return;
         }
 
-        // All good — register session
-        loggedInUsername = username;
-        SessionManager.addSession(username, this);
-
-        // RG4 — set status to ONLINE
-        userDAO.updateStatus(username, User.UserStatus.ONLINE);
-
-        logger.info("User logged in: {}", username);
-        sendMessage(new NetworkMessage(NetworkMessage.Type.LOGIN_SUCCESS, username));
-
-        // Notify all other clients this user came online
-        SessionManager.broadcastExcept(username,
-                new NetworkMessage(NetworkMessage.Type.USER_CONNECTED, username));
-
-        // RG6 — deliver any messages sent while offline
-        deliverPendingMessages(username);
-    }
-
-    private void handleLogout() {
-        logger.info("User logged out: {}", loggedInUsername);
-        handleDisconnect();
-    }
-
-    private void handleSendMessage(NetworkMessage msg) {
-        // RG2 — must be authenticated
-        if (loggedInUsername == null) {
-            sendMessage(new NetworkMessage(
-                    NetworkMessage.Type.ERROR, "Not authenticated"));
+        // RG3 : deja connecte ?
+        if (server.isUserOnline(user)) {
+            safeSend(NetworkMessage.fail(NetworkMessage.Type.LOGIN_FAIL,
+                    "User already connected from another session."));
             return;
         }
 
-        String receiverUsername = msg.getReceiver();
+        this.username = user;
+        if (!server.addOnlineClient(username, this)) {
+            safeSend(NetworkMessage.fail(NetworkMessage.Type.LOGIN_FAIL,
+                    "Session conflict. Try again."));
+            return;
+        }
+
+        // RG4 : statut ONLINE en DB
+        userDAO.updateStatus(username, User.Status.ONLINE);
+
+        safeSend(NetworkMessage.loginSuccess(username));
+        logger.info("[LOGIN] {}", username);
+
+        // ✅ CORRECTION : envoyer TOUS les utilisateurs avec leur statut
+        handleGetOnlineUsers();
+
+        // RG6 : livraison messages hors-ligne
+        List<Message> pending = messageDAO.getUndeliveredMessages(username);
+        for (Message m : pending) {
+            NetworkMessage nm = new NetworkMessage(
+                    NetworkMessage.Type.RECEIVE_MESSAGE,
+                    m.getSender().getUsername(),
+                    username,
+                    m.getContenu());
+            nm.setTimestamp(m.getDateEnvoi());
+            safeSend(nm);
+            messageDAO.markAsDelivered(m);
+        }
+        if (!pending.isEmpty())
+            logger.info("[OFFLINE_DELIVERY] {} messages to {}", pending.size(), username);
+    }
+
+    // RG2, RG5, RG6, RG7
+    private void handleMessage(NetworkMessage msg) {
+        if (username == null) return;
+
         String content = msg.getContent();
 
-        // RG7 — content must not be empty
-        if (content == null || content.trim().isEmpty()) {
-            sendMessage(new NetworkMessage(
-                    NetworkMessage.Type.ERROR, "Message cannot be empty"));
+        // RG7
+        if (content == null || content.isBlank() || content.length() > 1000) {
+            safeSend(NetworkMessage.fail(NetworkMessage.Type.ERROR,
+                    "Message must be 1-1000 characters."));
             return;
         }
 
-        // RG7 — content must not exceed 1000 characters
-        if (content.length() > 1000) {
-            sendMessage(new NetworkMessage(
-                    NetworkMessage.Type.ERROR, "Message exceeds 1000 characters"));
+        User sender   = userDAO.findByUsername(username);
+        User receiver = userDAO.findByUsername(msg.getReceiver());
+
+        // RG5
+        if (receiver == null) {
+            safeSend(NetworkMessage.fail(NetworkMessage.Type.ERROR,
+                    "Recipient not found."));
             return;
         }
 
-        // RG5 — receiver must exist
-        Optional<User> receiverOpt = userDAO.findByUsername(receiverUsername);
-        if (receiverOpt.isEmpty()) {
-            sendMessage(new NetworkMessage(
-                    NetworkMessage.Type.ERROR, "Recipient does not exist"));
-            return;
-        }
+        Message entity = new Message(sender, receiver, content);
+        messageDAO.save(entity);
+        logger.info("[MSG] {} -> {}: {}", username, receiver.getUsername(), content);
 
-        // Save message to DB
-        Optional<User> senderOpt = userDAO.findByUsername(loggedInUsername);
-        Message message = new Message(senderOpt.get(), receiverOpt.get(), content);
-        messageDAO.save(message);
-
-        logger.info("Message from {} to {}", loggedInUsername, receiverUsername);
-
-        // RG6 — if receiver is online deliver immediately, otherwise it stays in DB
-        if (SessionManager.isOnline(receiverUsername)) {
-            ClientHandler receiverHandler = SessionManager.getHandler(receiverUsername);
-            receiverHandler.sendMessage(new NetworkMessage(
+        // RG6 : livraison directe si destinataire en ligne
+        if (server.isUserOnline(receiver.getUsername())) {
+            ClientHandler destHandler = server.getClientHandler(receiver.getUsername());
+            NetworkMessage delivery = new NetworkMessage(
                     NetworkMessage.Type.RECEIVE_MESSAGE,
-                    loggedInUsername,
-                    receiverUsername,
-                    content));
-
-            // Mark as received
-            messageDAO.updateStatus(message.getId(), Message.MessageStatus.RECU);
-        }
-    }
-
-    private void handleGetHistory(NetworkMessage msg) {
-        // RG2 — must be authenticated
-        if (loggedInUsername == null) {
-            sendMessage(new NetworkMessage(
-                    NetworkMessage.Type.ERROR, "Not authenticated"));
-            return;
-        }
-
-        // RG8 — history ordered chronologically (handled in DAO)
-        List<Message> history = messageDAO.getConversation(
-                loggedInUsername, msg.getReceiver());
-
-        sendMessage(new NetworkMessage(NetworkMessage.Type.HISTORY_RESPONSE, history));
-    }
-
-    private void handleGetOnlineUsers() {
-        List<String> onlineUsers = SessionManager.getOnlineUsernames();
-        sendMessage(new NetworkMessage(
-                NetworkMessage.Type.ONLINE_USERS_RESPONSE, onlineUsers));
-    }
-
-    // --- Offline message delivery (RG6) ---
-
-    private void deliverPendingMessages(String username) {
-        List<Message> pending = messageDAO.getPendingMessages(username);
-        if (pending.isEmpty()) return;
-
-        logger.info("Delivering {} pending messages to {}", pending.size(), username);
-
-        for (Message msg : pending) {
-            sendMessage(new NetworkMessage(
-                    NetworkMessage.Type.RECEIVE_MESSAGE,
-                    msg.getSender().getUsername(),
                     username,
-                    msg.getContenu()));
-
-            // Mark as received now that it's been delivered
-            messageDAO.updateStatus(msg.getId(), Message.MessageStatus.RECU);
+                    receiver.getUsername(),
+                    content);
+            delivery.setTimestamp(entity.getDateEnvoi());
+            destHandler.safeSend(delivery);
+            messageDAO.markAsDelivered(entity);
         }
+        // Sinon : reste ENVOYE en DB, livre a la prochaine connexion (RG6)
     }
 
-    // --- Disconnect handling ---
+    // ✅ CORRECTION PRINCIPALE : envoyer TOUS les utilisateurs (online + offline)
+    //    sauf soi-même, avec leur statut réel
+    private void handleGetOnlineUsers() {
+        List<User> allUsers = userDAO.findAll();
 
-    private void handleDisconnect() {
-        if (loggedInUsername != null) {
-            // RG4 — set status to OFFLINE
-            userDAO.updateStatus(loggedInUsername, User.UserStatus.OFFLINE);
-            SessionManager.removeSession(loggedInUsername);
+        List<NetworkMessage.UserStatusDTO> dtos = allUsers.stream()
+                .filter(u -> !u.getUsername().equals(username)) // exclure soi-même
+                .map(u -> new NetworkMessage.UserStatusDTO(
+                        u.getUsername(),
+                        server.isUserOnline(u.getUsername()) // statut en temps réel
+                ))
+                .collect(Collectors.toList());
 
-            // Notify all other clients
-            SessionManager.broadcastExcept(loggedInUsername,
-                    new NetworkMessage(
-                            NetworkMessage.Type.USER_DISCONNECTED, loggedInUsername));
-
-            logger.info("User disconnected: {}", loggedInUsername);
-            loggedInUsername = null;
-        }
+        safeSend(new NetworkMessage(NetworkMessage.Type.ONLINE_USERS_RESPONSE, dtos));
     }
 
-    private void closeConnection() {
+    // RG8 : historique ordre chronologique
+    private void handleGetHistory(NetworkMessage msg) {
+        if (username == null) return;
+        String partner = msg.getReceiver();
+        List<Message> history = messageDAO.getHistory(username, partner);
+
+        List<NetworkMessage> historyMsgs = history.stream().map(m -> {
+            NetworkMessage nm = new NetworkMessage(
+                    NetworkMessage.Type.RECEIVE_MESSAGE,
+                    m.getSender().getUsername(),
+                    m.getReceiver().getUsername(),
+                    m.getContenu());
+            nm.setTimestamp(m.getDateEnvoi());
+            return nm;
+        }).collect(Collectors.toList());
+
+        safeSend(new NetworkMessage(NetworkMessage.Type.HISTORY_RESPONSE, historyMsgs));
+    }
+
+    // RG4 : statut OFFLINE a la deconnexion
+    private void handleLogout() {
+        cleanup();
+        logger.info("[LOGOUT] {}", username);
+    }
+
+    public synchronized void safeSend(NetworkMessage msg) {
         try {
-            if (in != null)     in.close();
-            if (out != null)    out.close();
-            if (socket != null) socket.close();
-        } catch (IOException e) {
-            logger.error("Error closing connection: {}", e.getMessage());
-        }
-    }
-
-    // --- Send a message to THIS client ---
-
-    public synchronized void sendMessage(NetworkMessage message) {
-        try {
-            out.writeObject(message);
+            out.writeObject(msg);
             out.flush();
-            // Reset prevents Hibernate caching old object state in the stream
             out.reset();
         } catch (IOException e) {
-            logger.error("Error sending message to {}: {}", loggedInUsername, e.getMessage());
+            logger.warn("Send failed to {}: {}", username, e.getMessage());
         }
+    }
+
+    public void sendStatusUpdate(String changedUser, boolean online) {
+        safeSend(NetworkMessage.statusChange(changedUser, online));
+    }
+
+    private void cleanup() {
+        if (username != null) {
+            server.removeOnlineClient(username);
+            userDAO.updateStatus(username, User.Status.OFFLINE);
+            username = null;
+        }
+        try {
+            if (in     != null) in.close();
+            if (out    != null) out.close();
+            if (socket != null) socket.close();
+        } catch (IOException ignored) {}
     }
 }

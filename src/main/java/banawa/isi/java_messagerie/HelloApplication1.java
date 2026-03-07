@@ -1,8 +1,8 @@
 package banawa.isi.java_messagerie;
 
+import banawa.isi.java_messagerie.client.ServerConnection;
 import banawa.isi.java_messagerie.network.NetworkMessage;
 import banawa.isi.java_messagerie.utils.HibernateUtil;
-import banawa.isi.java_messagerie.client.ServerConnection;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
@@ -11,9 +11,9 @@ import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class HelloApplication extends Application {
+public class HelloApplication1 extends Application {
 
-    private static final Logger logger = LoggerFactory.getLogger(HelloApplication.class);
+    private static final Logger logger = LoggerFactory.getLogger(HelloApplication1.class);
 
     @Override
     public void start(Stage stage) {
@@ -23,7 +23,7 @@ public class HelloApplication extends Application {
             logger.info("Database ready.");
 
             FXMLLoader loader = new FXMLLoader(
-                    HelloApplication.class.getResource(
+                    HelloApplication1.class.getResource(
                             "/banawa/isi/java_messagerie/view/FormConnection.fxml"));
             Scene scene = new Scene(loader.load());
             stage.setTitle("Messaging App — Login");

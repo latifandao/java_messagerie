@@ -1,86 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.PasswordField?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.effect.DropShadow?>
-<?import javafx.scene.image.Image?>
-<?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.paint.Color?>
-<?import javafx.scene.text.Font?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
 
-<AnchorPane prefHeight="470.0" prefWidth="581.0" style="-fx-background-color: white; -fx-background-radius: 20; -fx-border-radius: 20;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="banawa.isi.java_messagerie.controller.LoginController">
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="banawa.isi.java_messagerie.controller.RegisterController"
+      alignment="CENTER" spacing="20"
+      prefWidth="380" prefHeight="520"
+      style="-fx-background-color: #0d1b2a; -fx-padding: 40;">
 
-    <!-- Title -->
-    <Label alignment="CENTER" layoutX="266.0" layoutY="21.0" prefHeight="35.0" prefWidth="220.0" text="INSCRIPTION">
-        <font>
-            <Font name="Book Antiqua Bold" size="22.0" />
-        </font>
-    </Label>
+    <Label text="Messagerie"
+           style="-fx-text-fill: white; -fx-font-size: 28; -fx-font-weight: bold;"/>
+    <Label text="cree ton compte"
+           style="-fx-text-fill: #b2dfdb; -fx-font-size: 14;"/>
 
-    <!-- Username -->
-    <Label alignment="CENTER" layoutX="181.0" layoutY="78.0" prefHeight="35.0" prefWidth="182.0" text="Nom d'utilisateur" textFill="#8f8d8d">
-        <font>
-            <Font size="14.0" />
-        </font>
-    </Label>
-    <TextField fx:id="usernameTextField" layoutX="215.0" layoutY="113.0" prefHeight="46.0" prefWidth="345.0" promptText="Choisir ton nom de utilisateur">
-        <effect><DropShadow /></effect>
-    </TextField>
+    <VBox spacing="14"
+          style="-fx-background-color: white; -fx-background-radius: 16;
+                 -fx-padding: 28; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 10, 0, 0, 4);">
 
-    <!-- Password -->
-    <Label alignment="CENTER" layoutX="175.0" layoutY="166.0" prefHeight="35.0" prefWidth="182.0" text="Mot de Passe" textFill="#8f8c8c">
-        <font>
-            <Font size="14.0" />
-        </font>
-    </Label>
-    <PasswordField fx:id="passwordField" layoutX="215.0" layoutY="202.0" prefHeight="46.0" prefWidth="345.0" promptText="saisr ton mot de passe">
-        <effect><DropShadow /></effect>
-    </PasswordField>
+        <Label text="Username" style="-fx-font-weight: bold; -fx-text-fill: #333;"/>
+        <TextField fx:id="usernameTextField"
+                   promptText="choisis un utilisateur"
+                   style="-fx-background-radius: 8; -fx-border-radius: 8;
+                          -fx-border-color: #e0e0e0; -fx-padding: 8 12 8 12;"/>
 
-    <!-- Confirm Password -->
-    <Label alignment="CENTER" layoutX="209.0" layoutY="259.0" prefHeight="35.0" prefWidth="182.0" text="Confirmer le mot de passe" textFill="#989494">
-        <font>
-            <Font size="14.0" />
-        </font>
-    </Label>
-    <PasswordField fx:id="confirmPasswordField" layoutX="215.0" layoutY="295.0" prefHeight="46.0" prefWidth="345.0" promptText="confirmer ton mot de passe">
-        <effect><DropShadow /></effect>
-    </PasswordField>
+        <Label text="Password" style="-fx-font-weight: bold; -fx-text-fill: #333;"/>
+        <PasswordField fx:id="passwordField"
+                       promptText="choisis un mot de passe"
+                       style="-fx-background-radius: 8; -fx-border-radius: 8;
+                              -fx-border-color: #e0e0e0; -fx-padding: 8 12 8 12;"/>
 
-    <!-- Status label -->
-    <Label fx:id="statusLabel" alignment="CENTER" layoutX="100.0" layoutY="318.0" prefHeight="25.0" prefWidth="400.0" text="" textFill="RED">
-        <font>
-            <Font name="Book Antiqua Bold" size="13.0" />
-        </font>
-    </Label>
+        <Label text="Confirm Password" style="-fx-font-weight: bold; -fx-text-fill: #333;"/>
+        <PasswordField fx:id="confirmPasswordField"
+                       promptText="Confirme mot de passe"
+                       style="-fx-background-radius: 8; -fx-border-radius: 8;
+                              -fx-border-color: #e0e0e0; -fx-padding: 8 12 8 12;"/>
 
-    <!-- Register button -->
-    <Button fx:id="registerButton" layoutX="215.0" layoutY="365.0" mnemonicParsing="false" onAction="#handleRegister" prefHeight="52.0" prefWidth="345.0" style="-fx-background-color: #862ec0;" text="S'inscrire" textFill="#f8f4f4">
-        <font>
-            <Font name="System Bold" size="18.0" />
-        </font>
-        <effect><DropShadow /></effect>
-    </Button>
+        <Label fx:id="statusLabel" text=""
+               style="-fx-font-size: 12;" wrapText="true"/>
 
-    <!-- Back to login -->
-    <Button fx:id="backButton" layoutX="391.0" layoutY="428.0" mnemonicParsing="false" onAction="#goToLogin" prefHeight="32.0" prefWidth="110.0" style="-fx-background-color: transparent;" text="Se connecter" textFill="#763dcc">
-        <font>
-            <Font name="Book Antiqua Bold" size="15.0" />
-        </font>
-        <effect><DropShadow>
-            <color>
-               <Color red="0.9649122953414917" green="0.9559779167175293" blue="0.9559779167175293" />
-            </color></DropShadow></effect>
-    </Button>
-   <ImageView fitHeight="160.0" fitWidth="161.0" layoutX="35.0" layoutY="145.0">
-      <image>
-         <Image url="@../../../../../../../../../Downloads/téléchargement%20(1).png" />
-      </image>
-   </ImageView>
-   <Label layoutX="324.0" layoutY="56.0" text="Créez votre compte" textFill="#888787" />
-   <Label layoutX="300.0" layoutY="435.0" text="Déjà un compte ?" textFill="#848282" />
+        <Button fx:id="registerButton" text="creer un compte"
+                onAction="#handleRegister" maxWidth="Infinity"
+                style="-fx-background-color: #4fc3f7; -fx-text-fill: white;
+                       -fx-background-radius: 8; -fx-padding: 10;
+                       -fx-font-size: 14; -fx-font-weight: bold; -fx-cursor: hand;"/>
 
-</AnchorPane>
+        <Separator/>
+
+        <Button fx:id="backToLoginButton" text="Are-tu deja un compte? Se connecter"
+                onAction="#goToLogin" maxWidth="Infinity"
+                style="-fx-background-color: transparent; -fx-text-fill: #075e54;
+                       -fx-border-color: #075e54; -fx-border-radius: 8;
+                       -fx-background-radius: 8; -fx-padding: 8;
+                       -fx-cursor: hand;"/>
+    </VBox>
+
+</VBox>

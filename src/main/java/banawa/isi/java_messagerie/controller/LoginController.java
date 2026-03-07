@@ -1,41 +1,22 @@
 package banawa.isi.java_messagerie.controller;
 
-import javafx.application.Platform;
-import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.TextField;
-import javafx.stage.Stage;
-
-
-
-import javafx.event.ActionEvent;
-import javafx.scene.control.Button;
-import javafx.scene.control.TextField;
-
 import banawa.isi.java_messagerie.client.ServerConnection;
 import banawa.isi.java_messagerie.network.NetworkMessage;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 public class LoginController {
 
-    @FXML
-    private TextField usernameTextField;
+    @FXML private TextField     usernameTextField;
     @FXML private PasswordField passwordField;
-    @FXML private Label statusLabel;
-    @FXML private Button loginButton;
-    @FXML private Button registerButton;
+    @FXML private Label         statusLabel;
+    @FXML private Button        loginButton;
+    @FXML private Button        registerButton;
 
     private ServerConnection connection;
 
@@ -43,30 +24,25 @@ public class LoginController {
     public void initialize() {
         connection = ServerConnection.getInstance();
 
-        // Connect to server when login screen loads
         if (!connection.isConnected()) {
-            boolean connected = connection.connect();
-            if (!connected) {
-                setStatus("Cannot connect to server. Is it running?", true);
+            boolean ok = connection.connect();
+            if (!ok) {
+                setStatus("Impossible de se connecter au serveur.", true);
                 loginButton.setDisable(true);
                 registerButton.setDisable(true);
                 return;
             }
         }
 
-        // Handle all incoming messages from server
-        connection.setOnMessageReceived(message -> {
-            Platform.runLater(() -> handleServerMessage(message));
-        });
+        connection.setOnMessageReceived(msg ->
+                Platform.runLater(() -> handleServerMessage(msg)));
 
-        // RG10 — handle connection lost
-        connection.setOnConnectionLost(() -> {
-            Platform.runLater(() -> {
-                setStatus("Connection to server lost.", true);
-                loginButton.setDisable(true);
-                registerButton.setDisable(true);
-            });
-        });
+        connection.setOnConnectionLost(() ->
+                Platform.runLater(() -> {
+                    setStatus("Connexion perdue.", true);
+                    loginButton.setDisable(true);
+                    registerButton.setDisable(true);
+                }));
     }
 
     @FXML
@@ -74,25 +50,14 @@ public class LoginController {
         String username = usernameTextField.getText().trim();
         String password = passwordField.getText().trim();
 
-        // Basic client-side validation
-        if (username.isEmpty()) {
-            setStatus("Please enter a username.", true);
-            return;
-        }
-        if (password.isEmpty()) {
-            setStatus("Please enter a password.", true);
-            return;
-        }
+        if (username.isEmpty()) { setStatus("Entrez un nom d'utilisateur.", true);  return; }
+        if (password.isEmpty()) { setStatus("Entrez un mot de passe.", true);  return; }
 
-        // Disable buttons while waiting for server response
         loginButton.setDisable(true);
-        setStatus("Logging in...", false);
+        setStatus("Connexion…", false);
 
         connection.send(new NetworkMessage(
-                NetworkMessage.Type.LOGIN,
-                username,
-                null,
-                password));
+                NetworkMessage.Type.LOGIN, username, password));
     }
 
     @FXML
@@ -100,31 +65,26 @@ public class LoginController {
         try {
             FXMLLoader loader = new FXMLLoader(
                     getClass().getResource(
-                            "/com/isil3gl/messageriejava/view/FormInscription.fxml"));
+                            "/banawa/isi/java_messagerie/view/FormInscription.fxml"));
             Stage stage = (Stage) registerButton.getScene().getWindow();
             stage.setScene(new Scene(loader.load()));
-            stage.setTitle("Register");
+            stage.setTitle("creer un compte");
         } catch (Exception e) {
-            setStatus("Could not load register screen.", true);
+            setStatus("Impossible de charger l'écran d'inscription.", true);
         }
     }
 
-    private void handleServerMessage(NetworkMessage message) {
-        switch (message.getType()) {
+    private void handleServerMessage(NetworkMessage msg) {
+        switch (msg.getType()) {
 
-            case LOGIN_SUCCESS -> {
-                String username = message.getSender();
-                openChatWindow(username);
-            }
+            case LOGIN_SUCCESS -> openChatWindow(msg.getSender());
 
             case LOGIN_FAIL -> {
-                setStatus(message.getContent(), true);
+                setStatus(msg.getContent(), true);
                 loginButton.setDisable(false);
             }
 
-            default -> {
-                // Ignore any other message types on the login screen
-            }
+            default -> { /* ignore les autres messages sur cet écran */ }
         }
     }
 
@@ -132,46 +92,23 @@ public class LoginController {
         try {
             FXMLLoader loader = new FXMLLoader(
                     getClass().getResource(
-                            "/com/isil3gl/messageriejava/view/ChatView.fxml"));
+                            "/banawa/isi/java_messagerie/view/ChatView.fxml"));
             Stage stage = (Stage) loginButton.getScene().getWindow();
-            Scene scene = new Scene(loader.load());
+            Scene scene  = new Scene(loader.load());
             stage.setScene(scene);
-            stage.setTitle("Messaging App — " + username);
+            stage.setTitle("Messagerie — " + username);
 
-            // Pass the logged-in username to the chat controller
-            ChatController chatController = loader.getController();
-            chatController.initializeChat(username);
+            ChatController chat = loader.getController();
+            chat.initializeChat(username, connection);
 
         } catch (Exception e) {
-            setStatus("Could not load chat window.", true);
+            setStatus("Impossible de charger la fenêtre de chat " + e.getMessage(), true);
             loginButton.setDisable(false);
         }
     }
 
-    // --- Helpers ---
-
-    private void setStatus(String message, boolean isError) {
-        statusLabel.setText(message);
-        statusLabel.setTextFill(isError
-                ? javafx.scene.paint.Color.RED
-                : javafx.scene.paint.Color.GREEN);
+    private void setStatus(String text, boolean error) {
+        statusLabel.setText(text);
+        statusLabel.setTextFill(error ? Color.RED : Color.GREEN);
     }
 }
-
-
-//        **How the login flow works end to end:**
-//        ```
-//User clicks LOGIN
-//      ↓
-//Client validates fields not empty
-//      ↓
-//Sends NetworkMessage(LOGIN, username, null, password) to server
-//      ↓
-//Server verifies credentials, checks RG3 (not already connected)
-//      ↓
-//Server sends back LOGIN_SUCCESS or LOGIN_FAIL
-//      ↓
-//Listener thread receives it → Platform.runLater → handleServerMessage
-//      ↓
-//LOGIN_SUCCESS → openChatWindow(username)
-//LOGIN_FAIL    → show error in statusLabel, re-enable button
