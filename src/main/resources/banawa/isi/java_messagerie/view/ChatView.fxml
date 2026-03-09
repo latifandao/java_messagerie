@@ -3,7 +3,6 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.shape.Circle?>
-<?import javafx.scene.text.Font?>
 
 <HBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
@@ -17,7 +16,7 @@
                  -fx-border-color: #e0e0e0;
                  -fx-border-width: 0 1 0 0;">
 
-        <!-- En-tête : nom utilisateur + logout -->
+        <!-- En-tête -->
         <HBox alignment="CENTER_LEFT" spacing="10"
               style="-fx-background-color: #0d1b2a; -fx-padding: 14 12 14 15;">
             <Circle radius="18" fill="#128c7e"/>
@@ -50,18 +49,41 @@
                               -fx-background-color: white;"/>
         </HBox>
 
-        <!-- Légende online/offline -->
-        <HBox spacing="15" alignment="CENTER_LEFT"
-              style="-fx-padding: 5 12 5 12; -fx-background-color: #fafafa;">
-            <Circle radius="5" fill="#25d366"/>
-            <Label text="en ligne" style="-fx-font-size: 11; -fx-text-fill: #555;"/>
-            <Circle radius="5" fill="#bdbdbd"/>
-            <Label text="hors ligne" style="-fx-font-size: 11; -fx-text-fill: #555;"/>
+        <!-- Boutons filtre -->
+        <HBox spacing="6" alignment="CENTER_LEFT"
+              style="-fx-padding: 6 10 6 10; -fx-background-color: #fafafa;">
+
+            <Button fx:id="filterAllButton" text="Tous"
+                    onAction="#handleFilterAll"
+                    style="-fx-background-color: #0d1b2a;
+                           -fx-text-fill: white;
+                           -fx-background-radius: 12;
+                           -fx-padding: 4 10 4 10;
+                           -fx-font-size: 11;
+                           -fx-cursor: hand;"/>
+
+            <Button fx:id="filterOnlineButton" text="● en ligne"
+                    onAction="#handleFilterOnline"
+                    style="-fx-background-color: #e8f5e9;
+                           -fx-text-fill: #25d366;
+                           -fx-background-radius: 12;
+                           -fx-padding: 4 10 4 10;
+                           -fx-font-size: 11;
+                           -fx-cursor: hand;"/>
+
+            <Button fx:id="filterOfflineButton" text="● hors ligne"
+                    onAction="#handleFilterOffline"
+                    style="-fx-background-color: #f5f5f5;
+                           -fx-text-fill: #888;
+                           -fx-background-radius: 12;
+                           -fx-padding: 4 10 4 10;
+                           -fx-font-size: 11;
+                           -fx-cursor: hand;"/>
         </HBox>
 
         <Separator/>
 
-        <!-- Liste des contacts scrollable -->
+        <!-- Liste contacts -->
         <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
                     style="-fx-background: transparent; -fx-background-color: transparent;">
             <VBox fx:id="contactListVBox" spacing="0"
@@ -69,24 +91,19 @@
         </ScrollPane>
     </VBox>
 
-    <!-- ══ Panneau droit : zone chat ══ -->
+    <!-- ══ Panneau droit : chat ══ -->
     <VBox HBox.hgrow="ALWAYS"
           style="-fx-background-color: #ece5dd;">
 
-        <!-- En-tête contact sélectionné -->
         <HBox alignment="CENTER_LEFT" spacing="12"
               style="-fx-background-color: #0d1b2a; -fx-padding: 12 15 12 15;">
-
-            <!-- Avatar + dot statut -->
             <StackPane>
                 <Circle radius="20" fill="#128c7e"/>
                 <Label fx:id="chatPartnerInitialLabel" text="?"
                        style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 16;"/>
-                <!-- Dot online/offline en bas à droite de l'avatar -->
                 <Circle fx:id="chatPartnerStatusDot" radius="7" fill="#bdbdbd"
                         StackPane.alignment="BOTTOM_RIGHT"/>
             </StackPane>
-
             <VBox spacing="2">
                 <Label fx:id="chatPartnerNameLabel" text="Selectionner un contact"
                        style="-fx-text-fill: white; -fx-font-size: 15; -fx-font-weight: bold;"/>
@@ -95,14 +112,12 @@
             </VBox>
         </HBox>
 
-        <!-- Zone messages -->
         <ScrollPane fx:id="chatPane" VBox.vgrow="ALWAYS" fitToWidth="true"
                     style="-fx-background: transparent; -fx-background-color: transparent;">
             <VBox fx:id="scrollbodyChatVBox" spacing="5"
                   style="-fx-padding: 12 8 12 8; -fx-background-color: #ece5dd;"/>
         </ScrollPane>
 
-        <!-- Zone de saisie -->
         <HBox spacing="10"
               style="-fx-background-color: #f0f0f0; -fx-padding: 10 12 10 12;"
               alignment="CENTER">
