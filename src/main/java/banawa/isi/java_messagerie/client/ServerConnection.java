@@ -3,15 +3,10 @@ package banawa.isi.java_messagerie.client;
 import banawa.isi.java_messagerie.network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.*;
 import java.net.Socket;
 import java.util.function.Consumer;
 
-/**
- * Connexion Singleton au serveur.
- * Tous les controllers utilisent getInstance() — ne jamais créer manuellement.
- */
 public class ServerConnection {
 
     private static final Logger logger = LoggerFactory.getLogger(ServerConnection.class);
@@ -27,7 +22,6 @@ public class ServerConnection {
     private Consumer<NetworkMessage> onMessageReceived;
     private Runnable                 onConnectionLost;
 
-    // ── Singleton ─────────────────────────────────────────────────
 
     private static ServerConnection instance;
 
@@ -38,14 +32,8 @@ public class ServerConnection {
 
     private ServerConnection() {}
 
-    // ── Connexion ─────────────────────────────────────────────────
-
-    /**
-     * Ouvre la connexion TCP vers le serveur.
-     * @return true si succès, false sinon (RG10)
-     */
     public boolean connect() {
-        if (isConnected()) return true;   // déjà connecté
+        if (isConnected()) return true;
         try {
             socket  = new Socket(HOST, PORT);
             out     = new ObjectOutputStream(socket.getOutputStream());
@@ -79,8 +67,6 @@ public class ServerConnection {
         t.start();
     }
 
-    // ── Envoi ─────────────────────────────────────────────────────
-
     public synchronized void send(NetworkMessage msg) {
         try {
             out.writeObject(msg);
@@ -92,8 +78,6 @@ public class ServerConnection {
         }
     }
 
-    // ── Déconnexion ───────────────────────────────────────────────
-
     public void disconnect() {
         running = false;
         try {
@@ -104,15 +88,14 @@ public class ServerConnection {
         instance = null;
         logger.info("Disconnected from server");
     }
-
-    // ── Callbacks ─────────────────────────────────────────────────
-
-    public void setOnMessageReceived(Consumer<NetworkMessage> cb) { this.onMessageReceived = cb; }
-    public void setOnConnectionLost(Runnable cb)                  { this.onConnectionLost  = cb; }
-
-    // ── État ──────────────────────────────────────────────────────
-
+    public void setOnMessageReceived(Consumer<NetworkMessage> cb) {
+        this.onMessageReceived = cb;
+    }
+    public void setOnConnectionLost(Runnable cb) {
+        this.onConnectionLost  = cb;
+    }
     public boolean isConnected() {
         return socket != null && socket.isConnected() && !socket.isClosed();
     }
+
 }

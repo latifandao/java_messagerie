@@ -11,13 +11,11 @@
       prefWidth="950" prefHeight="620"
       style="-fx-background-color: #f0f0f0;">
 
-    <!-- ══ Panneau gauche : contacts ══ -->
     <VBox prefWidth="280"
           style="-fx-background-color: #ffffff;
                  -fx-border-color: #e0e0e0;
                  -fx-border-width: 0 1 0 0;">
 
-        <!-- En-tête : nom utilisateur + logout -->
         <HBox alignment="CENTER_LEFT" spacing="10"
               style="-fx-background-color: #0d1b2a; -fx-padding: 14 12 14 15;">
             <Circle radius="18" fill="#128c7e"/>
@@ -36,7 +34,6 @@
                            -fx-padding: 3 10 3 10;"/>
         </HBox>
 
-        <!-- Barre de recherche -->
         <HBox style="-fx-background-color: #f6f6f6; -fx-padding: 8 10 8 10;">
             <TextField fx:id="searchField"
                        promptText="🔍  Recherche contacts..."
@@ -50,7 +47,7 @@
                               -fx-background-color: white;"/>
         </HBox>
 
-        <!-- Légende online/offline -->
+
         <HBox spacing="15" alignment="CENTER_LEFT"
               style="-fx-padding: 5 12 5 12; -fx-background-color: #fafafa;">
             <Circle radius="5" fill="#25d366"/>
@@ -61,7 +58,6 @@
 
         <Separator/>
 
-        <!-- Liste des contacts scrollable -->
         <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
                     style="-fx-background: transparent; -fx-background-color: transparent;">
             <VBox fx:id="contactListVBox" spacing="0"
@@ -69,20 +65,16 @@
         </ScrollPane>
     </VBox>
 
-    <!-- ══ Panneau droit : zone chat ══ -->
     <VBox HBox.hgrow="ALWAYS"
           style="-fx-background-color: #ece5dd;">
 
-        <!-- En-tête contact sélectionné -->
         <HBox alignment="CENTER_LEFT" spacing="12"
               style="-fx-background-color: #0d1b2a; -fx-padding: 12 15 12 15;">
 
-            <!-- Avatar + dot statut -->
             <StackPane>
                 <Circle radius="20" fill="#128c7e"/>
                 <Label fx:id="chatPartnerInitialLabel" text="?"
                        style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 16;"/>
-                <!-- Dot online/offline en bas à droite de l'avatar -->
                 <Circle fx:id="chatPartnerStatusDot" radius="7" fill="#bdbdbd"
                         StackPane.alignment="BOTTOM_RIGHT"/>
             </StackPane>
@@ -95,14 +87,13 @@
             </VBox>
         </HBox>
 
-        <!-- Zone messages -->
+
         <ScrollPane fx:id="chatPane" VBox.vgrow="ALWAYS" fitToWidth="true"
                     style="-fx-background: transparent; -fx-background-color: transparent;">
             <VBox fx:id="scrollbodyChatVBox" spacing="5"
                   style="-fx-padding: 12 8 12 8; -fx-background-color: #ece5dd;"/>
         </ScrollPane>
 
-        <!-- Zone de saisie -->
         <HBox spacing="10"
               style="-fx-background-color: #f0f0f0; -fx-padding: 10 12 10 12;"
               alignment="CENTER">
