@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="banawa.isi.java_messagerie.controller.LoginController"
+      alignment="CENTER" spacing="20"
+      prefWidth="380" prefHeight="480"
+      style="-fx-background-color: #0d1b2a; -fx-padding: 40;">
+
+    <Label text="Messagerie"
+           style="-fx-text-fill: white; -fx-font-size: 28; -fx-font-weight: bold;"/>
+    <Label text="Connectez-vous à votre compte"
+           style="-fx-text-fill: #b2dfdb; -fx-font-size: 14;"/>
+
+    <VBox spacing="14"
+          style="-fx-background-color: white; -fx-background-radius: 16;
+                 -fx-padding: 28; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 10, 0, 0, 4);">
+
+        <Label text="Username" style="-fx-font-weight: bold; -fx-text-fill: #333;"/>
+        <TextField fx:id="usernameTextField"
+                   promptText="Nom d'utilisateur"
+                   style="-fx-background-radius: 8; -fx-border-radius: 8;
+                          -fx-border-color: #e0e0e0; -fx-padding: 8 12 8 12;"/>
+
+        <Label text="Password" style="-fx-font-weight: bold; -fx-text-fill: #333;"/>
+        <PasswordField fx:id="passwordField"
+                       promptText="mot de passe"
+                       style="-fx-background-radius: 8; -fx-border-radius: 8;
+                              -fx-border-color: #e0e0e0; -fx-padding: 8 12 8 12;"/>
+
+        <Label fx:id="statusLabel" text=""
+               style="-fx-font-size: 12;" wrapText="true"/>
+
+        <Button fx:id="loginButton" text="Se connecter"
+                onAction="#handleLogin" maxWidth="Infinity"
+                style="-fx-background-color: #4fc3f7; -fx-text-fill: white;
+                       -fx-background-radius: 8; -fx-padding: 10;
+                       -fx-font-size: 14; -fx-font-weight: bold; -fx-cursor: hand;"/>
+
+        <Separator/>
+
+        <Button fx:id="registerButton" text="Creer un compte"
+                onAction="#goToRegister" maxWidth="Infinity"
+                style="-fx-background-color: transparent; -fx-text-fill: #075e54;
+                       -fx-border-color: #075e54; -fx-border-radius: 8;
+                       -fx-background-radius: 8; -fx-padding: 8;
+                       -fx-cursor: hand;"/>
+    </VBox>
+
+</VBox>
