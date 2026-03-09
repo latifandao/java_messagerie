@@ -12,7 +12,7 @@ public class HibernateUtil {
 
     private static final String URL      = "jdbc:postgresql://localhost:5432/messaging_db";
     private static final String USER     = "postgres";
-    private static final String PASSWORD = "passer";
+    private static final String PASSWORD = "passer123";
 
     private static final EntityManagerFactory emf;
 
