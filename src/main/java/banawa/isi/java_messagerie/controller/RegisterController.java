@@ -9,6 +9,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import javafx.scene.input.KeyCode;
 
 public class RegisterController {
 
@@ -24,6 +25,12 @@ public class RegisterController {
     @FXML
     public void initialize() {
         connection = ServerConnection.getInstance();
+
+        passwordField.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.ENTER) {
+                handleRegister(); // your login button action method
+            }
+        });
 
         if (!connection.isConnected()) connection.connect();
 

@@ -16,6 +16,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
+import javafx.scene.input.KeyCode;
 
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -26,7 +27,7 @@ public class ChatController {
     @FXML private VBox       contactListVBox;
     @FXML private VBox       scrollbodyChatVBox;
     @FXML private ScrollPane chatPane;
-    @FXML private TextField  inputTextField;
+    @FXML private TextField inputMessageField;
     @FXML private TextField  searchField;
     @FXML private Button     sendButton;
     @FXML private Label      chatPartnerNameLabel;
@@ -64,6 +65,12 @@ public class ChatController {
 
         connection.setOnConnectionLost(() ->
                 Platform.runLater(this::handleConnectionLost));
+
+        inputMessageField.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.ENTER) {
+                handleSend(); // your send button action method
+            }
+        });
 
         connection.send(new NetworkMessage(NetworkMessage.Type.GET_ONLINE_USERS));
     }
@@ -279,13 +286,13 @@ public class ChatController {
             chatPartnerStatusLabel.setText("Select a contact first!");
             return;
         }
-        String content = inputTextField.getText().trim();
+        String content = inputMessageField.getText().trim();
         if (content.isEmpty() || content.length() > 1000) return;
 
         connection.send(new NetworkMessage(NetworkMessage.Type.SEND_MESSAGE,
                 loggedInUsername, currentChatPartner, content));
         addMessageBubble(content, true, java.time.LocalTime.now().format(TIME_FMT));
-        inputTextField.clear();
+        inputMessageField.clear();
     }
 
     private void addMessageBubble(String content, boolean isMine, String time) {
